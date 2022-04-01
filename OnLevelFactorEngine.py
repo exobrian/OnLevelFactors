@@ -85,8 +85,5 @@ dataTable = pd.read_sql_query(sqlString, conn, params = params, index_col = 'Eff
 #This line will look up the latest date up to what's requested
 dataTable.iloc[dataTable.index.get_loc(str(nextDate), method='ffill')]
 
-test = DateMethods.getDaysInBetween(startDate, endDate)/2
-print(MathMethods.correctRound(10.5234,0))
-print(type(test))
-print(round(test))
+
 print(DateMethods.getAverageAccidentDate(startDate, endDate, 1, 12))

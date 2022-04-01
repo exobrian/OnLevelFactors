@@ -7,9 +7,6 @@ Helper functions to handle math
 import datetime
 
 class DateMethods:
-    #def __init__(self):
-        #Do nothing for now
-
     def getDaysInBetween(date1, date2):
         if (date1 is None or date2 is None):
             return None
@@ -18,7 +15,7 @@ class DateMethods:
         
     def getAverageAccidentDate(date1, date2, typeOfPeriod, policyTermInMonths):
         #if typeOfPeriod == 'Policy':
-        halfOfDaysBetween = round(DateMethods.getDaysInBetween(date1, date2)/2, 0)
+        halfOfDaysBetween = MathMethods.correctRound(DateMethods.getDaysInBetween(date1, date2)/2, 0)
         midDate = min(date1, date2) + datetime.timedelta(days = halfOfDaysBetween)
         return midDate
     
@@ -31,8 +28,7 @@ class MathMethods:
             return float(value)
         else:        
             leftOfPrecision = valueString[0:index + precision + 1]  #Left of the precision is all digits to left of required digits inclusive of digit being rounded
-            rightOfPrecision = valueString[index + precision + 2:]  #Everything to the right of the above
-            
+            rightOfPrecision = valueString[index + precision + 1:]  #Everything to the right of the above
             if (int(rightOfPrecision[0]) >= 5):
                 roundedNumber = str(float(leftOfPrecision.replace('.','')) + 1)
                 roundedNumber = float(str(roundedNumber[0:index] + "." + roundedNumber[index:index + precision]))
