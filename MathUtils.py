@@ -5,6 +5,7 @@ Helper functions to handle math
 @author: btran
 """
 import datetime
+import pandas as pd
 
 class DateMethods:
     def getDaysInBetween(date1, date2):
@@ -18,6 +19,13 @@ class DateMethods:
         halfOfDaysBetween = MathMethods.correctRound(DateMethods.getDaysInBetween(date1, date2)/2, 0)
         midDate = min(date1, date2) + datetime.timedelta(days = halfOfDaysBetween)
         return midDate
+    
+    def getLatestDate(date1, dateSeries):        
+        dateDistanceSeries = pd.to_timedelta(abs(dateSeries - date1), unit='day').dt.days.rename('DateDistance')
+        dateDistanceSeries = pd.concat([dateSeries, dateDistanceSeries], axis = 1)
+        minDateIndex = dateDistanceSeries['DateDistance'].idxmin()
+        return dateSeries[minDateIndex]
+        
     
 class MathMethods:
     def correctRound(value, precision = 0):
@@ -38,3 +46,6 @@ class MathMethods:
                 roundedNumber = float(str(roundedNumber[0:index] + "." + roundedNumber[index:index + precision]))
                 return roundedNumber
         return None
+    
+    def factorBuilder(i):
+        return (1+i)

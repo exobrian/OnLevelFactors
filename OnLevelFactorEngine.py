@@ -19,8 +19,11 @@ Second part:
 
 import pyodbc 
 import pandas as pd
+import numpy as np
+#from datetime import date
+import datetime
+
 from MathUtils import DateMethods, MathMethods
-from datetime import date
 
 
 """Alternative Driver: ODBC Driver 17 for SQL Server"""
@@ -44,8 +47,6 @@ states = dataTable.to_records()
 print(states[0])
 
 
-#Getting Level Indices for State i
-
 #Inputs: Hardcoded for now
 olfStateCd = 'PA'
 typeOfCurve = "D"
@@ -54,7 +55,7 @@ typeOfPeriod = "Accident"                           #"Policy", "Accident", or "C
 policyTermInMonths = 12
 typeOfOlf = 1
 startDate = (date(year=1998, month = 1, day = 1))   #This will be the minimum date of the interpolated level indices
-endDate = date(year=1999, month =1, day =1)         #This will be the maximum date of the interpolated level indices
+endDate = date(year=2030, month =12, day =1)         #This will be the maximum date of the interpolated level indices
 
 
 nextDate = pd.Timestamp(startDate) + pd.DateOffset(months=lengthOfPeriodInMonths)
@@ -72,18 +73,39 @@ params = str(olfStateId)
 cursor.execute(sqlString, params)
 maxUploadDate = cursor.fetchone()[0]
 
-sqlString = """Select EffectiveDate, LevelIndex From OnLevelFactors with (nolock)
+sqlString = """Select EffectiveDate, PercentChange From OnLevelFactors with (nolock)
         Where UploadDate = ?
         and OlfTypeDimId = ?
         and StateDimId = ?
         """
 params = (maxUploadDate, typeOfOlf, olfStateId)            
-dataTable = pd.read_sql_query(sqlString, conn, params = params, index_col = 'EffectiveDate')
+dataTable = pd.read_sql_query(sqlString, conn, params = params)#, index_col = 'EffectiveDate')
+dataTable['EffectiveDate'] = pd.to_datetime(dataTable['EffectiveDate']).dt.date
 
 
+####################################################################################################################
+########Interpolation Section          #############################################################################
+####################################################################################################################
 #testing date lookup. Not sure why, but lookup value needs to be a string even though index column is datetime.
 #This line will look up the latest date up to what's requested
-dataTable.iloc[dataTable.index.get_loc(str(nextDate), method='ffill')]
-
+#dataTable.iloc[dataTable.index.get_loc(str(nextDate), method='ffill')]
+dataTable.iloc[dataTable['EffectiveDate'].get_loc(str(nextDate), method='ffill')]
+#dataTable.loc[dataTable['EffectiveDate']==startDate]
 
 print(DateMethods.getAverageAccidentDate(startDate, endDate, 1, 12))
+
+#First we'll build a column of factors based on the percent changes. Then cumulatively multiply them to build the LevelIndex.
+dataTable['Factor'] = dataTable['PercentChange'].apply(MathMethods.factorBuilder)
+dataTable['LevelIndex'] = np.cumprod(dataTable['Factor'])
+
+
+startDate = (date(year=1998, month = 1, day = 1))
+interpolationTable = pd.date_range(start=startDate, end=endDate, freq=str(lengthOfPeriodInMonths) + 'MS', name='TimePeriod').date
+firstDates = pd.to_datetime(dataTable['EffectiveDate']).dt.date
+secondDates = pd.to_datetime(dataTable['EffectiveDate'].shift(-1)).dt.date
+max(secondDates) + datetime.timedelta(days = 2) #doesn't really matter what this date is. Need it to fill NaN space to match sizes between arrays.
+
+vfunc = np.vectorize(DateMethods.getAverageAccidentDate)
+vfunc(firstDates, secondDates, 1,12)
+
+dataTable['AverageAccidentDate'] = DateMethods.getAverageAccidentDate(firstDates, secondDates, typeOfPeriod, policyTermInMonths)
