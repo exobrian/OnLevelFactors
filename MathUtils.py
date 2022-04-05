@@ -64,7 +64,7 @@ class DateMethods:
 class MathMethods:
     def correctRound(value, precision = 0):
         valueString= str(abs(value))    
-        sign = (-1, 1)[value>=0]
+        sign = ('-', '')[value>=0]
         index = valueString.find('.')   
         
         #return value back if it's a whole number for now.
@@ -78,12 +78,12 @@ class MathMethods:
             #Round up if first digit of the Right side is 5 or greater. Truncate if otherwise.
             if (int(rightOfPrecision[0]) >= 5):
                 roundedNumber = str(float(leftOfPrecision.replace('.','')) + 1)
-                roundedNumber = float(str(roundedNumber[0:index] + "." + roundedNumber[index:index + precision]))
-                return roundedNumber * sign
+                roundedNumber = str(roundedNumber[0:index] + "." + roundedNumber[index:index + precision])
+                return sign + roundedNumber
             else:
                 roundedNumber = str(float(leftOfPrecision.replace('.','')))
-                roundedNumber = float(str(roundedNumber[0:index] + "." + roundedNumber[index:index + precision]))
-                return roundedNumber * sign
+                roundedNumber = str(roundedNumber[0:index] + "." + roundedNumber[index:index + precision])
+                return sign + roundedNumber
         else:
             return value
     
