@@ -33,18 +33,8 @@ conn = pyodbc.connect('Driver={SQL Server};'
                       'Trusted_Connection=yes;')
 
 sqlString = 'SELECT * FROM dimState'
-
-#cursor = conn.cursor()
-#cursor.execute('SELECT * FROM dimState')
-"""print(type(cursor))
-for i in cursor:
-    print(i)
-"""
 dataTable = pd.read_sql_query(sqlString, conn)
-#newState = UsState(dataTable.iloc[1])
-
 states = dataTable.to_records()
-print(states[0])
 
 
 #Inputs: Hardcoded for now
@@ -54,8 +44,8 @@ lengthOfPeriodInMonths = 1
 typeOfPeriod = "Accident"                           #"Policy", "Accident", or "Calendar"
 policyTermInMonths = 12
 typeOfOlf = 1
-startDate = (date(year=1998, month = 1, day = 1))   #This will be the minimum date of the interpolated level indices
-endDate = date(year=2030, month =12, day =1)         #This will be the maximum date of the interpolated level indices
+startDate = date(year=1998, month = 1, day = 1)   #This will be the minimum date of the interpolated level indices
+endDate = date(year=2030, month =12, day =1)         #This will be the maximum date of the interpolated level indices. Should be far in the future.
 
 
 nextDate = pd.Timestamp(startDate) + pd.DateOffset(months=lengthOfPeriodInMonths)
@@ -86,26 +76,23 @@ dataTable['EffectiveDate'] = pd.to_datetime(dataTable['EffectiveDate']).dt.date
 ####################################################################################################################
 ########Interpolation Section          #############################################################################
 ####################################################################################################################
-#testing date lookup. Not sure why, but lookup value needs to be a string even though index column is datetime.
-#This line will look up the latest date up to what's requested
-#dataTable.iloc[dataTable.index.get_loc(str(nextDate), method='ffill')]
-dataTable.iloc[dataTable['EffectiveDate'].get_loc(str(nextDate), method='ffill')]
-#dataTable.loc[dataTable['EffectiveDate']==startDate]
-
-print(DateMethods.getAverageAccidentDate(startDate, endDate, 1, 12))
 
 #First we'll build a column of factors based on the percent changes. Then cumulatively multiply them to build the LevelIndex.
 dataTable['Factor'] = dataTable['PercentChange'].apply(MathMethods.factorBuilder)
 dataTable['LevelIndex'] = np.cumprod(dataTable['Factor'])
 
-
-startDate = (date(year=1998, month = 1, day = 1))
+#Now, instantiate a table of dates from some very early date to a date far in the future. 
+#We'll want this range to cover all dates we have tracked changes for and far in the future dates we'll want to trend to.
 interpolationTable = pd.date_range(start=startDate, end=endDate, freq=str(lengthOfPeriodInMonths) + 'MS', name='TimePeriod').date
-firstDates = pd.to_datetime(dataTable['EffectiveDate']).dt.date
-secondDates = pd.to_datetime(dataTable['EffectiveDate'].shift(-1)).dt.date
-max(secondDates) + datetime.timedelta(days = 2) #doesn't really matter what this date is. Need it to fill NaN space to match sizes between arrays.
 
+#This part is brute force. We'll need to calculate the average date in between each date.
+#To do this, we'll create a second column and shift the first dates up. This will naturally leave the last entry Null in the second date column. 
+#We'll arbitrarily set this last entry to be 2 days after the latest entry. Note that timedelta doens't have a month offset.
+firstDates = pd.to_datetime(dataTable['EffectiveDate']).dt.date
+secondDates = pd.to_datetime(firstDates).shift(-1).dt.date
+secondDates[len(secondDates) - 1] = max(secondDates) + datetime.timedelta(days = 2)
+
+#Numpy.vectorize takes in a method and vectorizes it. We'll use it to finally create our average date column in the main datatable.
 vfunc = np.vectorize(DateMethods.getAverageAccidentDate)
 vfunc(firstDates, secondDates, 1,12)
-
-dataTable['AverageAccidentDate'] = DateMethods.getAverageAccidentDate(firstDates, secondDates, typeOfPeriod, policyTermInMonths)
+dataTable['AverageAccidentDate'] = vfunc(firstDates, secondDates, 1,12)
