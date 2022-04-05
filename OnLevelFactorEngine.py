@@ -44,8 +44,8 @@ lengthOfPeriodInMonths = 1
 typeOfPeriod = "Accident"                           #"Policy", "Accident", or "Calendar"
 policyTermInMonths = 12
 typeOfOlf = 1
-startDate = date(year=1998, month = 1, day = 1)   #This will be the minimum date of the interpolated level indices
-endDate = date(year=2030, month =12, day =1)         #This will be the maximum date of the interpolated level indices. Should be far in the future.
+startDate = datetime.date(year=1998, month = 1, day = 1)   #This will be the minimum date of the interpolated level indices
+endDate = datetime.date(year=2030, month =12, day =1)         #This will be the maximum date of the interpolated level indices. Should be far in the future.
 
 
 nextDate = pd.Timestamp(startDate) + pd.DateOffset(months=lengthOfPeriodInMonths)
@@ -69,7 +69,7 @@ sqlString = """Select EffectiveDate, PercentChange From OnLevelFactors with (nol
         and StateDimId = ?
         """
 params = (maxUploadDate, typeOfOlf, olfStateId)            
-dataTable = pd.read_sql_query(sqlString, conn, params = params)#, index_col = 'EffectiveDate')
+dataTable = pd.read_sql_query(sqlString, conn, params = params)
 dataTable['EffectiveDate'] = pd.to_datetime(dataTable['EffectiveDate']).dt.date
 
 
@@ -81,10 +81,6 @@ dataTable['EffectiveDate'] = pd.to_datetime(dataTable['EffectiveDate']).dt.date
 dataTable['Factor'] = dataTable['PercentChange'].apply(MathMethods.factorBuilder)
 dataTable['LevelIndex'] = np.cumprod(dataTable['Factor'])
 
-#Now, instantiate a table of dates from some very early date to a date far in the future. 
-#We'll want this range to cover all dates we have tracked changes for and far in the future dates we'll want to trend to.
-interpolationTable = pd.date_range(start=startDate, end=endDate, freq=str(lengthOfPeriodInMonths) + 'MS', name='TimePeriod').date
-
 #This part is brute force. We'll need to calculate the average date in between each date.
 #To do this, we'll create a second column and shift the first dates up. This will naturally leave the last entry Null in the second date column. 
 #We'll arbitrarily set this last entry to be 2 days after the latest entry. Note that timedelta doens't have a month offset.
@@ -94,5 +90,11 @@ secondDates[len(secondDates) - 1] = max(secondDates) + datetime.timedelta(days =
 
 #Numpy.vectorize takes in a method and vectorizes it. We'll use it to finally create our average date column in the main datatable.
 vfunc = np.vectorize(DateMethods.getAverageAccidentDate)
-vfunc(firstDates, secondDates, 1,12)
-dataTable['AverageAccidentDate'] = vfunc(firstDates, secondDates, 1,12)
+dataTable['AverageAccidentDate'] = vfunc(firstDates, secondDates, typeOfPeriod, policyTermInMonths)
+
+#Now, instantiate a table of dates from some very early date to a date far in the future. 
+#We'll want this range to cover all dates we have tracked changes for and far in the future dates we'll want to trend to.
+interpolationTable = pd.DataFrame(pd.date_range(start=startDate, end=endDate, freq=str(lengthOfPeriodInMonths) + 'MS').date).rename(columns={0: 'TimePeriod'})
+
+#This average accident date is more complicated than the midpoint. The original from excel is rounding the day for this instance. Also takes into account whether we're using policy or accident periods.
+interpolationTable['AverageAccidentDate'] = interpolationTable['TimePeriod'].apply(DateMethods.getAverageAccidentDateMonthly, args=(typeOfPeriod, lengthOfPeriodInMonths))

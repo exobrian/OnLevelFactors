@@ -7,6 +7,7 @@ Helper functions to handle math
 import datetime
 import pandas as pd
 import math
+from dateutil.relativedelta import relativedelta
 
 class DateMethods:
     def getDaysInBetween(date1, date2):
@@ -29,7 +30,7 @@ class DateMethods:
         else:        
             return abs((date1-date2).days)  #this returns an integer which is always truncated.
         
-    def getAverageAccidentDate(date1, date2, typeOfPeriod, policyTermInMonths):
+    def getAverageAccidentDate(date1, date2, typeOfPeriod="Accident", policyTermInMonths=12):
         """        
         Parameters
         ----------
@@ -48,8 +49,8 @@ class DateMethods:
             'datetime'.
 
         """
-        if (math.isnan(date1) or math.isnan(date2)):
-            return math.nan
+        if (date1 is None or date2 is None):
+            return None
         halfOfDaysBetween = MathMethods.correctRound(DateMethods.getDaysInBetween(date1, date2)/2, 0)
         midDate = min(date1, date2) + datetime.timedelta(days = halfOfDaysBetween)
         return midDate
@@ -58,11 +59,38 @@ class DateMethods:
         dateDistanceSeries = pd.to_timedelta(abs(dateSeries - date1), unit='day').dt.days.rename('DateDistance')
         dateDistanceSeries = pd.concat([dateSeries, dateDistanceSeries], axis = 1)
         minDateIndex = dateDistanceSeries['DateDistance'].idxmin()
-        return dateSeries[minDateIndex]
-        
+        return dateSeries[minDateIndex]    
+    
+    def getAverageAccidentDateMonthly(date1, typeOfPeriod='Accident', lengthOfPeriodInMonths=1):
+        typeOfPeriodOffset = (0,12)[typeOfPeriod=='Policy']
+        year = date1.year    
+        month = date1.month
+        day = ((lengthOfPeriodInMonths + typeOfPeriodOffset) % 2)*14 + 1
+        monthOffset = math.floor((lengthOfPeriodInMonths + typeOfPeriodOffset)/2)
+        return datetime.date(year=year, month=month, day=day) + relativedelta(months=monthOffset)
     
 class MathMethods:
     def correctRound(value, precision = 0):
+        """       
+        Parameters
+        ----------
+        value : numerical
+            This is the number to be round.
+        precision : TYPE, optional
+            DESCRIPTION. The default is 0.
+            Precision is the desired decimal place to be rounded to.
+            0 indicates nearest integer.
+            1 indicates tenths place.
+            2 indicates hundredths place.
+            etc.
+            Note: Precision less than 0 currently not supported
+
+        Returns float
+        -------
+        TYPE
+            This method converts input into a string before recasting as float.
+
+        """
         valueString= str(abs(value))    
         sign = ('-', '')[value>=0]
         index = valueString.find('.')   
@@ -79,11 +107,11 @@ class MathMethods:
             if (int(rightOfPrecision[0]) >= 5):
                 roundedNumber = str(float(leftOfPrecision.replace('.','')) + 1)
                 roundedNumber = str(roundedNumber[0:index] + "." + roundedNumber[index:index + precision])
-                return sign + roundedNumber
+                return float(sign + roundedNumber)
             else:
-                roundedNumber = str(float(leftOfPrecision.replace('.','')))
+                roundedNumber = str(leftOfPrecision.replace('.',''))
                 roundedNumber = str(roundedNumber[0:index] + "." + roundedNumber[index:index + precision])
-                return sign + roundedNumber
+                return float(sign + roundedNumber)
         else:
             return value
     
