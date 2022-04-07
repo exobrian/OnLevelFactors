@@ -55,17 +55,37 @@ class DateMethods:
         midDate = min(date1, date2) + datetime.timedelta(days = halfOfDaysBetween)
         return midDate
     
-    def getLatestDate(date1, dateSeries):        
+    def getLatestDate(date1, dateSeries, returnIndex = 0):
+        """      
+        Parameters
+        ----------
+        date1 : TYPE
+            DESCRIPTION.
+        dateSeries : TYPE
+            DESCRIPTION.
+        returnIndex : TYPE, optional
+            DESCRIPTION. The default is 0.
+            Set to 1 to return ith entry in series. Set to 0 if only requiring index.
+        Returns
+        -------
+        TYPE
+            DESCRIPTION.
+
+        """
         dateDistanceSeries = pd.to_timedelta(abs(dateSeries - date1), unit='day').dt.days.rename('DateDistance')
         dateDistanceSeries = pd.concat([dateSeries, dateDistanceSeries], axis = 1)
         minDateIndex = dateDistanceSeries['DateDistance'].idxmin()
-        return dateSeries[minDateIndex]    
+        
+        if (returnIndex == 1):
+            return minDateIndex
+        else:
+            return dateSeries[minDateIndex]
     
     def getAverageAccidentDateMonthly(date1, typeOfPeriod='Accident', lengthOfPeriodInMonths=1):
         typeOfPeriodOffset = (0,12)[typeOfPeriod=='Policy']
         year = date1.year    
         month = date1.month
-        day = ((lengthOfPeriodInMonths + typeOfPeriodOffset) % 2)*14 + 1
+        day = ((lengthOfPeriodInMonths + typeOfPeriodOffset) % 2)*14 + 1    #this just rounds the midpoint to the 15th day of the month for odd period lengths. Sets to 1st day for even period lengths.
         monthOffset = math.floor((lengthOfPeriodInMonths + typeOfPeriodOffset)/2)
         return datetime.date(year=year, month=month, day=day) + relativedelta(months=monthOffset)
     
@@ -114,6 +134,7 @@ class MathMethods:
                 return float(sign + roundedNumber)
         else:
             return value
-    
-    def factorBuilder(i):
-        return (1+i)
+        
+class ExcelMethods:
+    def IndexMatchColumn(dataSeries, rowIndex):
+        return dataSeries[rowIndex]

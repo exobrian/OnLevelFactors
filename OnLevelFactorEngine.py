@@ -23,7 +23,7 @@ import numpy as np
 #from datetime import date
 import datetime
 
-from MathUtils import DateMethods, MathMethods
+from MathUtils import DateMethods, MathMethods, ExcelMethods
 
 
 """Alternative Driver: ODBC Driver 17 for SQL Server"""
@@ -78,7 +78,7 @@ dataTable['EffectiveDate'] = pd.to_datetime(dataTable['EffectiveDate']).dt.date
 ####################################################################################################################
 
 #First we'll build a column of factors based on the percent changes. Then cumulatively multiply them to build the LevelIndex.
-dataTable['Factor'] = dataTable['PercentChange'].apply(MathMethods.factorBuilder)
+dataTable['Factor'] = dataTable['PercentChange'] + 1
 dataTable['LevelIndex'] = np.cumprod(dataTable['Factor'])
 
 #This part is brute force. We'll need to calculate the average date in between each date.
@@ -98,3 +98,14 @@ interpolationTable = pd.DataFrame(pd.date_range(start=startDate, end=endDate, fr
 
 #This average accident date is more complicated than the midpoint. The original from excel is rounding the day for this instance. Also takes into account whether we're using policy or accident periods.
 interpolationTable['AverageAccidentDate'] = interpolationTable['TimePeriod'].apply(DateMethods.getAverageAccidentDateMonthly, args=(typeOfPeriod, lengthOfPeriodInMonths))
+
+#Next steps:
+#Need to look up left bound of indexed levels. This will be the latest level by average accident period in the dataTable up to the aad in the interpolated table.
+#The right bound is the next level.
+
+interpolationTable['lBoundIndex'] = interpolationTable['AverageAccidentDate'].apply(DateMethods.getLatestDate, args=(dataTable['AverageAccidentDate'], 1))
+interpolationTable['rBoundIndex'] = interpolationTable['lBoundIndex'].apply(lambda x: min(len(dataTable) - 1, x + 1))   #Capping to largest index; otherwise out of bounds
+
+interpolationTable['lBoundLevel'] = interpolationTable['lBoundIndex'].apply(lambda x: ExcelMethods.IndexMatchColumn(dataTable['LevelIndex'], x))
+interpolationTable['rBoundLevel'] = interpolationTable['rBoundIndex'].apply(lambda x: ExcelMethods.IndexMatchColumn(dataTable['LevelIndex'], x))
+
