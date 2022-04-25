@@ -6,6 +6,8 @@ Created on Fri Apr  1 09:36:29 2022
 """
 
 import numpy as np
+import pandas as pd
+from MathUtils import MathMethods
 
 value = -16.546549846516132465489478415564
 precision = 1
@@ -33,3 +35,22 @@ elif (precision >=0):
         print(sign + roundedNumber)
 else:
     print(value)
+    
+
+
+xInput = 1.5
+xSeries = [1, 2]
+distanceSeries = abs(xInput - xSeries)
+distanceSeries = pd.concat([xSeries, distanceSeries], axis = 1)
+minIndex = distanceSeries['distance'].idxmin()    
+
+MathMethods.correctRound(2.85,1)
+
+value = 2.85
+precision = 1
+sign = math.copysign(1, value) #need to use copysign since python doesn't support sign
+temp = abs(value)*(10**precision)
+temp = temp + 0.5
+temp = math.trunc(temp)
+temp = temp/(10**precision)
+temp = temp * sign

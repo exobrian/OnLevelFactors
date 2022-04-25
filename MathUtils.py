@@ -6,6 +6,7 @@ Helper functions to handle math
 """
 import datetime
 import pandas as pd
+import numpy as np
 import math
 from dateutil.relativedelta import relativedelta
 
@@ -88,8 +89,7 @@ class DateMethods:
         day = ((lengthOfPeriodInMonths + typeOfPeriodOffset) % 2)*14 + 1    #this just rounds the midpoint to the 15th day of the month for odd period lengths. Sets to 1st day for even period lengths.
         monthOffset = math.floor((lengthOfPeriodInMonths + typeOfPeriodOffset)/2)
         return datetime.date(year=year, month=month, day=day) + relativedelta(months=monthOffset)
-    
-class MathMethods:
+          
     def correctRound(value, precision = 0):
         """       
         Parameters
@@ -111,30 +111,32 @@ class MathMethods:
             This method converts input into a string before recasting as float.
 
         """
-        valueString= str(abs(value))    
-        sign = ('-', '')[value>=0]
-        index = valueString.find('.')   
+        sign = math.copysign(1, value) #need to use copysign since python doesn't support sign
+        temp = abs(value)*(10**precision)
+        temp = temp + 0.5
+        temp = math.trunc(temp)
+        temp = temp/(10**precision)
+        temp = temp * sign
+        return temp
         
-        #return value back if it's a whole number for now.
-        if (index == -1):
-            return float(value)
-        elif (precision >=0):
-            valueString = valueString + ''.zfill(precision) #padding with zeroes to the right in case precision requested is bigger than number of digits to the right of decimal
-            #This algorithm only works for nonnegative precision.. need to work on negative precision (-1 means round to tens, -2 hundreds, etc)
-            leftOfPrecision = valueString[0:index + precision + 1]  #Left of the precision is all digits to left of required digits inclusive of digit being rounded
-            rightOfPrecision = valueString[index + precision + 1:]  #Everything to the right of the above
-            #Round up if first digit of the Right side is 5 or greater. Truncate if otherwise.
-            if (int(rightOfPrecision[0]) >= 5):
-                roundedNumber = str(float(leftOfPrecision.replace('.','')) + 1)
-                roundedNumber = str(roundedNumber[0:index] + "." + roundedNumber[index:index + precision])
-                return float(sign + roundedNumber)
-            else:
-                roundedNumber = str(leftOfPrecision.replace('.',''))
-                roundedNumber = str(roundedNumber[0:index] + "." + roundedNumber[index:index + precision])
-                return float(sign + roundedNumber)
-        else:
-            return value
         
+        
+    def interpolate(xInput, xSeries, ySeries, curveType = 'Discrete'):
+        if (curveType == 'Continuous'):
+            A = np.vstack([xSeries, np.ones(len(xSeries))]).T
+            alpha = np.linalg.lstsq(A, ySeries, rcond=None)[0]
+            yPrediction = alpha[0]*xInput + alpha[1]
+            return yPrediction
+        elif (curveType == 'Discrete'):            
+            return MathMethods.findMinIndex(xInput, xSeries)
+    
+    def findMinIndex(xInput, xSeries):
+        distanceSeries = abs(xInput - xSeries).rename('distance')
+        distanceSeries = pd.concat([xSeries, distanceSeries], axis = 1)
+        minIndex = distanceSeries['distance'].idxmin()
+        return minIndex
+       
+    
 class ExcelMethods:
     def IndexMatchColumn(dataSeries, rowIndex):
         return dataSeries[rowIndex]
