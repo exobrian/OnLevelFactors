@@ -54,3 +54,19 @@ temp = temp + 0.5
 temp = math.trunc(temp)
 temp = temp/(10**precision)
 temp = temp * sign
+
+xInput = 1.5
+xSeries = [1,2]
+ySeries = [2.3,4.2]
+curveType = 'Discrete'
+if (curveType == 'Continuous'):
+    A = np.vstack([xSeries, np.ones(len(xSeries))]).T
+    alpha = np.linalg.lstsq(A, ySeries, rcond=None)[0]
+    yPrediction = alpha[0]*xInput + alpha[1]
+    print(yPrediction)
+elif (curveType == 'Discrete'):            
+    print(MathMethods.findMinIndex(xInput, xSeries))
+
+distanceSeries = pd.Series(abs(np.array(len(xSeries)*[xInput]) - np.array(xSeries))).rename('distance')
+distanceSeries = pd.concat([pd.Series(xSeries), distanceSeries], axis = 1)
+minIndex = distanceSeries['distance'].idxmin()

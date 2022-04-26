@@ -89,7 +89,8 @@ class DateMethods:
         day = ((lengthOfPeriodInMonths + typeOfPeriodOffset) % 2)*14 + 1    #this just rounds the midpoint to the 15th day of the month for odd period lengths. Sets to 1st day for even period lengths.
         monthOffset = math.floor((lengthOfPeriodInMonths + typeOfPeriodOffset)/2)
         return datetime.date(year=year, month=month, day=day) + relativedelta(months=monthOffset)
-          
+    
+class MathMethods:       
     def correctRound(value, precision = 0):
         """       
         Parameters
@@ -103,12 +104,11 @@ class DateMethods:
             1 indicates tenths place.
             2 indicates hundredths place.
             etc.
-            Note: Precision less than 0 currently not supported
 
         Returns float
         -------
         TYPE
-            This method converts input into a string before recasting as float.
+            Float rounded to user requested precision
 
         """
         sign = math.copysign(1, value) #need to use copysign since python doesn't support sign
@@ -117,9 +117,7 @@ class DateMethods:
         temp = math.trunc(temp)
         temp = temp/(10**precision)
         temp = temp * sign
-        return temp
-        
-        
+        return temp            
         
     def interpolate(xInput, xSeries, ySeries, curveType = 'Discrete'):
         if (curveType == 'Continuous'):
@@ -128,11 +126,12 @@ class DateMethods:
             yPrediction = alpha[0]*xInput + alpha[1]
             return yPrediction
         elif (curveType == 'Discrete'):            
-            return MathMethods.findMinIndex(xInput, xSeries)
+            minIndex = MathMethods.findMinIndex(xInput, xSeries)
+            return ySeries[minIndex]
     
     def findMinIndex(xInput, xSeries):
-        distanceSeries = abs(xInput - xSeries).rename('distance')
-        distanceSeries = pd.concat([xSeries, distanceSeries], axis = 1)
+        distanceSeries = pd.Series(abs(np.array(len(xSeries)*[xInput]) - np.array(xSeries))).rename('distance')
+        distanceSeries = pd.concat([pd.Series(xSeries), distanceSeries], axis = 1)
         minIndex = distanceSeries['distance'].idxmin()
         return minIndex
        

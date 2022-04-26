@@ -110,4 +110,4 @@ interpolationTable['lBoundLevel'] = interpolationTable['lBoundIndex'].apply(lamb
 interpolationTable['rBoundLevel'] = interpolationTable['rBoundIndex'].apply(lambda x: ExcelMethods.IndexMatchColumn(dataTable['LevelIndex'], x))
 
 
-MathMethods.interpolate(1.5, [1,2],[2.3,4.2],'Discrete')
+print(MathMethods.interpolate(12, [1,2],[2.3,4.2],'Discrete'))
